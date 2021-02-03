@@ -1,0 +1,3 @@
+[submodule "CSI_Camera"]
+	path = CSI_Camera
+	url = https://github.com/mtmal/Jetson-Stereo-CSI-Camera.git
