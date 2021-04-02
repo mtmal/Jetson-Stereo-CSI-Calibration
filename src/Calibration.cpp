@@ -110,7 +110,7 @@ bool Calibration::findChessCorners(SingleCamDataStruct& data) const
 
 void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamDataStruct& data) const
 {
-	bool test;
+	bool test = true;
     double rms;
     long int i;
     std::vector<std::vector<cv::Point3f> > objectPoints(1);
@@ -119,7 +119,7 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
     cv::FileStorage fs(folder + "/" + data.mName + CALIB_FILE_EXTENSION, cv::FileStorage::WRITE);
 
     calcChessboardCorners(objectPoints[0]);
-    do
+    while (test && !data.mSingleImgPoints.empty())
     {
         objectPoints[0][mBoardSize.width - 1].x = objectPoints[0][0].x + mSquareSize * (mBoardSize.width - 1);
         objectPoints.resize(data.mSingleImgPoints.size(), objectPoints[0]);
@@ -140,7 +140,7 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
 				test = true;
 			}
 		}
-    } while (test);
+    }
 
     data.mCameraMatrix.copyTo(data.mNewCameraMatrix);
 
@@ -163,7 +163,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 {
 	static const cv::TermCriteria DEFAULT_CRITERIA_STEREO(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 100, 1e-5);
 
-	bool test;
+	bool test = true;
     double err;
     long int i;
 	cv::Mat temp1, temp2;
@@ -172,7 +172,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 
     calcChessboardCorners(objectPoints[0]);
     puts("Running stereoCalibrate");
-    do
+    while (test && !stereo.mLCam.mStereoImgPoints.empty() && !stereo.mRCam.mStereoImgPoints.empty())
     {
         objectPoints.resize(stereo.mLCam.mStereoImgPoints.size(), objectPoints[0]);
     	test = false;
@@ -202,7 +202,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 				test = true;
 			}
 		}
-    } while (test);
+    }
 
     std::cout << "Rotation Matrix: " << stereo.mRotation << "\n";
     std::cout << "Translation matrix: " << stereo.mTranslation << "\n";
