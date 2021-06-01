@@ -47,26 +47,12 @@ static const std::string LEFT_IMAGE_SUFFIX  = "_" + LEFT_CALIB_FILE  + ".png";
 static const std::string RIGHT_IMAGE_SUFFIX = "_" + RIGHT_CALIB_FILE + ".png";
 /** Working folder where results of on-line calibration should be stored.  */
 static std::string FOLDER_MAIN;
-/** Foder where left camera images should be saved. */
-static std::string FOLDER_LEFT;
-/** Foder where right camera images should be saved. */
-static std::string FOLDER_RIGHT;
 /** Foder where stereo pairs should be saved. */
 static std::string FOLDER_STEREO;
 
 
 // to restart CSI camera in system use command:
 // $sudo systemctl restart nvargus-daemon
-
-/**
- * Enum which describes which calibration is being performed.
- */
-enum CALIB_TYPE
-{
-    LEFT = 0,
-    RIGHT,
-    STEREO
-};
 
 /**
  * Prints help information about this application.
@@ -105,8 +91,6 @@ double getTime()
 void populateFoldersNames(const std::string& main)
 {
     FOLDER_MAIN   = main;
-    FOLDER_LEFT   = FOLDER_MAIN + "/" + LEFT_CALIB_FILE   + "/";
-    FOLDER_RIGHT  = FOLDER_MAIN + "/" + RIGHT_CALIB_FILE  + "/";
     FOLDER_STEREO = FOLDER_MAIN + "/" + STEREO_CALIB_FILE + "/";
 }
 
@@ -134,30 +118,6 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
         printf("Failed to detect pattern in %s \n", file.c_str());
     }
     return retVal;
-}
-
-/**
- * Takes all images from a given folder and analyses them if checker board is visible on any.
- *  @param folder the folder where images of a checkerboard are located.
- *  @param calib the reference the calibration class.
- *  @param[in/out] data a data holding all information related to a single camera calibration.
- */
-void singleCamFind(const std::string& folder, const Calibration& calib, SingleCamDataStruct& data)
-{
-    int counter = 0;
-    std::string folderWithResults(folder + "checkerboard/");
-    std::vector<std::string> results;
-
-    mkdir(folderWithResults.c_str(), 0777);
-    cv::glob(folder + "*.png", results);
-    for (const std::string& file : results)
-    {
-        if (analyseImg(calib, file, folderWithResults, data))
-        {
-            printf("Image #%d \n", ++counter);
-            data.mSingleImgPoints.push_back(data.mRawPoints);
-        }
-    }
 }
 
 /**
@@ -202,55 +162,25 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
 }
 
 /**
- * Displays images in on-line calibration based on the calibration type.
- *  @param calType the type of the performed calibration type.
+ * Displays images in on-line calibration.
  *  @param stereoData the data structure with the latest images.
  */
-void displayImages(const CALIB_TYPE calType, StereoCamDataStruct& stereoData)
+void displayImages(StereoCamDataStruct& stereoData)
 {
-    switch (calType)
-    {
-        case LEFT:
-            cv::resize(stereoData.mLCam.mColImg, stereoData.mLCam.mDispImg, DISPLAY_SIZE);
-            cv::imshow(LEFT_WINDOW_NAME, stereoData.mLCam.mDispImg);
-            break;
-        case RIGHT:
-            cv::resize(stereoData.mRCam.mColImg, stereoData.mRCam.mDispImg, DISPLAY_SIZE);
-            cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
-            break;
-        case STEREO:
-            cv::resize(stereoData.mLCam.mColImg, stereoData.mLCam.mDispImg, DISPLAY_SIZE);
-            cv::resize(stereoData.mRCam.mColImg, stereoData.mRCam.mDispImg, DISPLAY_SIZE);
-            cv::imshow(LEFT_WINDOW_NAME,  stereoData.mLCam.mDispImg);
-            cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
-            break;
-        default:
-            break;
-    }
+    cv::resize(stereoData.mLCam.mColImg, stereoData.mLCam.mDispImg, DISPLAY_SIZE);
+    cv::resize(stereoData.mRCam.mColImg, stereoData.mRCam.mDispImg, DISPLAY_SIZE);
+    cv::imshow(LEFT_WINDOW_NAME,  stereoData.mLCam.mDispImg);
+    cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
 }
 
 /**
- * Saves the images to a file based on the performed calibration type.
- *  @param stereoData the data structure with the latest images.
+ * Saves the images to a file.
  */
-void saveImage(const CALIB_TYPE calType, StereoCamDataStruct& stereoData)
+void saveImage(StereoCamDataStruct& stereoData)
 {
     std::string timestamp = std::to_string(getTime());
-    switch (calType)
-    {
-        case LEFT:
-            cv::imwrite(FOLDER_LEFT + timestamp + LEFT_IMAGE_SUFFIX, stereoData.mLCam.mColImg);
-            break;
-        case RIGHT:
-            cv::imwrite(FOLDER_RIGHT + timestamp + RIGHT_IMAGE_SUFFIX, stereoData.mRCam.mColImg);
-            break;
-        case STEREO:
-            cv::imwrite(FOLDER_STEREO + timestamp + LEFT_IMAGE_SUFFIX,  stereoData.mLCam.mColImg);
-            cv::imwrite(FOLDER_STEREO + timestamp + RIGHT_IMAGE_SUFFIX, stereoData.mRCam.mColImg);
-            break;
-        default:
-            break;
-    }
+    cv::imwrite(FOLDER_STEREO + timestamp + LEFT_IMAGE_SUFFIX,  stereoData.mLCam.mColImg);
+    cv::imwrite(FOLDER_STEREO + timestamp + RIGHT_IMAGE_SUFFIX, stereoData.mRCam.mColImg);
 }
 
 char* parseInputs(int argc, char** argv, Calibration& calib, StereoCamDataStruct& stereoData)
@@ -313,8 +243,6 @@ int main(int argc, char** argv)
     StereoCamDataStruct stereoData(imageSize, DISPLAY_SIZE, CSI_Camera::FOCAL_LENGTH_M, CSI_Camera::SENSOR_WIDTH_M, -0.06);
     /** Class which provides all functionality for stereo camera calibration. */
     Calibration calib(imageSize, cv::Size(6, 9), 33, 0.008f);
-    /** Current type of calibration. */
-    CALIB_TYPE calType = LEFT;
     /* Parse any user inputs. */
     char* offlinePath = parseInputs(argc, argv, calib, stereoData);
 
@@ -323,58 +251,34 @@ int main(int argc, char** argv)
     	/* We will be acquiring images of calibration board, therefore we need to create all folders first. */
         populateFoldersNames("./" + std::to_string(getTime()));
         mkdir(FOLDER_MAIN.c_str(),   0777);
-        mkdir(FOLDER_LEFT.c_str(),   0777);
-        mkdir(FOLDER_RIGHT.c_str(),  0777);
         mkdir(FOLDER_STEREO.c_str(), 0777);
 
-        cv::namedWindow(LEFT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
+        cv::namedWindow(LEFT_WINDOW_NAME,  cv::WINDOW_AUTOSIZE);
+        cv::namedWindow(RIGHT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
         if (stereoCamera.startCamera(framerate, mode))
         {
         	/* The main loop which controls acquiring images from CSI stereo camera. */
             while (ESCAPE_KEY != key)
             {
-                key = cv::waitKey(30) & 0xff;
                 /** We need to take raw images for calibration. */
                 if (stereoCamera.getRawImages(stereoData.mLCam.mColImg, stereoData.mRCam.mColImg))
                 {
-                	/* Display the current images depending on the type of the calibration we perform. */
-                    displayImages(calType, stereoData);
+                	/* Display current images. */
+                    displayImages(stereoData);
+                    key = cv::waitKey(0) & 0xff;
                     /** If the user pressed space bar, save images to the file. We will analyse them later.
                      * Otherwise it takes too much time and may cause lags in display. Remember: we are doing
                      * the calibration in the highest possible resolution to get the best possible results. */
                     if (SPACE_KEY == key)
                     {
                         puts("Saving image");
-                        saveImage(calType, stereoData);
+                        saveImage(stereoData);
                     }
                 }
-                /** If the user pressed enter key, go to the next calibration type. We start by taking only
-                 * left camera images, then only right camera images, then both. Because images from stereo
-                 * calibration are used also for single camera calibration, it is imperative to focus, when
-                 * acquiring single camera only images, on regions which are not visible from the other camera.
-                 * I.e. when taking left camera images, focus on left edge of image frame. For right camera:
-                 * right edge. In stereo calibration the checkerboard will need to be in the centre to be visible
-                 * by both cameras, therefore other edges will be covered. */
-                if (ENTER_KEY == key)
+                else
                 {
-                    switch (calType)
-                    {
-                        case LEFT:
-                            cv::destroyWindow(LEFT_WINDOW_NAME);
-                            cv::namedWindow(RIGHT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
-                            calType = RIGHT;
-                            break;
-                        case RIGHT:
-                            cv::namedWindow(LEFT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
-                            calType = STEREO;
-                            break;
-                        case STEREO:
-                        /* Fall through */
-                        default:
-                            /* end the while loop */
-                            key = ESCAPE_KEY;
-                            break;
-                    }
+                    puts("Failed to capture raw images");
+                    key = cv::waitKey(30) & 0xff;
                 }
             }
         }
@@ -394,11 +298,7 @@ int main(int argc, char** argv)
 
     /* Now that images were captured, or we supplied folder with existing images, we load images first and detect
      * checker board. At this stage we build our lists of image points. */
-    puts("Identifying single left camera images.");
-    singleCamFind(FOLDER_LEFT,  calib, stereoData.mLCam);
-    puts("Identifying single right camera images.");
-    singleCamFind(FOLDER_RIGHT, calib, stereoData.mRCam);
-    puts("Identifying stereo pairs.");
+    puts("Identifying checkerboard.");
     stereoCamFind(calib, stereoData);
 
     /** If we failed to detect any image points, we simply skip calibration. Throw error and exit. */

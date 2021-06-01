@@ -47,7 +47,7 @@ struct SingleCamDataStruct
     cv::Mat mRectification;
     /** The new camera matrix obtained after stereo rectification P. */
     cv::Mat mNewCameraMatrix;
-    /** 	Output vector of standard deviations estimated for intrinsic parameters. */
+    /** Output vector of standard deviations estimated for intrinsic parameters. */
     cv::Mat mStdDevIntrinsics;
     /** Output vector of standard deviations estimated for extrinsic parameters. */
     cv::Mat mStdDevExtrinsics;

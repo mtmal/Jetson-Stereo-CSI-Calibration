@@ -31,13 +31,13 @@
 class Calibration
 {
 public:
-	/**
-	 * Basic constructor, initialises all variables.
-	 *  @param imageSize the size of images that cameras will be taking.
-	 *  @param boardSize the size of the calibration checkerboard.
-	 *  @param windowSize the size of a window for sub-pixel refinement.
-	 *  @param squareSize the size of an individual square in metres.
-	 */
+    /**
+     * Basic constructor, initialises all variables.
+     *  @param imageSize the size of images that cameras will be taking.
+     *  @param boardSize the size of the calibration checkerboard.
+     *  @param windowSize the size of a window for sub-pixel refinement.
+     *  @param squareSize the size of an individual square in metres.
+     */
     Calibration(const cv::Size& imageSize, const cv::Size& boardSize, const int windowSize, const float squareSize);
 
     /**

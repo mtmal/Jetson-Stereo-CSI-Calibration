@@ -1,7 +1,7 @@
 # Jetson-Stereo-CSI-Calibration
 
 ## General Info
-A tool to perform stereo CSI camera calibration tested on Jetson Nano. This application uses the [Stereo-CSI-Camera](https://github.com/mtmal/Jetson-Stereo-CSI-Camera) which is loaded as git submodule via cmake. The code has been tested using Waveshare's [IMX219-83 Stereo Camera](https://www.waveshare.com/wiki/IMX219-83_Stereo_Camera) and Nvidia Jetson Nano with JetPack 4.4.1.
+A tool to perform stereo CSI camera calibration tested on Jetson Nano. This application uses the [Stereo-CSI-Camera](https://github.com/mtmal/Jetson-Stereo-CSI-Camera) which is loaded as git submodule via cmake. The code has been tested using Waveshare's [IMX219-83 Stereo Camera](https://www.waveshare.com/wiki/IMX219-83_Stereo_Camera) and Nvidia Jetson Nano with JetPack 4.5.
 
 ## Requirements
 Same as for [Stereo-CSI-Camera](https://github.com/mtmal/Jetson-Stereo-CSI-Camera/blob/main/README.md#requirements) as it needs to compile.
@@ -17,8 +17,8 @@ $ ./CSI_Camera_Calibration -h
 ## Usage
 This is a typical application for stereo camera calibration. I used default OpenCV checkerboard displayed on mobile (Samsung A70 which offers fairly good size with individual checkerboard square size of 8 mm). It comes with some caveats but they are covered in [Discussion](#discussion). <br>
 The following keys are used:
-* Space - acquires image(s) for the current step
-* Enter - finishes the current step and proceeds to the next one
+* Space - saves the current stereo pair to file
+* Enter or anything else - acquires new stereo pair from the camera during the calibration
 * Escape - exits the current step and application
 
 ## Calibration Approach
@@ -30,4 +30,4 @@ The following keys are used:
 6. After calibration is done, results are saved in XML files and loaded by CSI_Camera. You can then inspect rectified images in a live view.
 
 ## Discussion
-I have not tried using checkerboard printed on a rigit paper/board yet. It is important that the board do not bend, hence I decided to use a mobile. However, I found that corners on images, after zoomin in, where not exact! Basically, you could see that black squares do not corder with their corners. It is all fine when visually inspecting checkerboard on mobile's screen, but not on images taken by IMX219. It might be artefact of taking images of a screen, or just a quality of the camera. This is the reason I used large window (33) for sub-pixel refinment, as it was able to better estimate the corner position. Too large window, however, was misaligning the corner point so it all boils down to finding the sweet spot.
+I have not tried using checkerboard printed on a rigit paper/board yet. It is important that the board do not bend, hence I decided to use a mobile. However, I found that corners on images, after zooming in, where not exact! Basically, you could see that black squares do not corder with their corners. It is all fine when visually inspecting checkerboard on mobile's screen, but not on images taken by IMX219. It might be artefact of taking images of a screen, or just a quality of the camera. This is the reason I used large window (33) for sub-pixel refinment, as it was able to better estimate the corner position. Too large window, however, was misaligning the corner point, so it all boils down to finding the sweet spot.

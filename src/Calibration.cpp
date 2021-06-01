@@ -126,9 +126,7 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
     	test = false;
 		rms = calibrateCamera(objectPoints, data.mSingleImgPoints, mImageSize, data.mCameraMatrix,
 							  data.mDist, rvecs, tvecs, data.mStdDevIntrinsics, data.mStdDevExtrinsics, data.mPerViewErrors,
-							  cv::CALIB_USE_INTRINSIC_GUESS +
-							  cv::CALIB_RATIONAL_MODEL +
-							  cv::CALIB_THIN_PRISM_MODEL);
+							  cv::CALIB_USE_INTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL);
 		printf("RMS error reported by calibrateCamera: %g\n", rms);
 
 		// we check now RMS for individual images. If any exceeds threshold, remove it and repeat calibration.
@@ -185,8 +183,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 						stereo.mRCam.mCameraMatrix, temp2,
 						mImageSize, stereo.mRotation, stereo.mTranslation, stereo.mEssential, stereo.mFundamental,
 						stereo.mPerViewErrors,
-						cv::CALIB_FIX_INTRINSIC + cv::CALIB_RATIONAL_MODEL + cv::CALIB_THIN_PRISM_MODEL +
-						cv::CALIB_USE_EXTRINSIC_GUESS,
+						cv::CALIB_FIX_INTRINSIC + cv::CALIB_RATIONAL_MODEL + cv::CALIB_USE_EXTRINSIC_GUESS,
 						DEFAULT_CRITERIA_STEREO);
 		printf("RMS error reported by stereoCalibrate: %g\n", err);
 
