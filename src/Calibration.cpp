@@ -120,6 +120,9 @@ bool Calibration::findChessCorners(SingleCamDataStruct& data) const
     {
         cv::cornerSubPix(data.mGreyImg, data.mRawPoints, mWindowSize, DEFAULT_SIZE, DEFAULT_CRITERIA_CORNERS);
         cv::drawChessboardCorners(data.mColImg, mBoardSize, cv::Mat(data.mRawPoints), found);
+        calcChessboardCorners(data.mRawObjectPoints);
+        data.mSingleImgPoints.push_back(data.mRawPoints);
+        data.mSingleObjectPoints.push_back(data.mRawObjectPoints);
     }
     return found;
 }
@@ -132,7 +135,6 @@ bool Calibration::findChArUcoCorners(SingleCamDataStruct& data) const
     std::vector<std::vector<cv::Point2f> > rejected;
     cv::Mat currentCharucoCorners;
     cv::Mat currentCharucoIds;
-    cv::Mat currentObjPoints;
 
     // detect markers
     cv::aruco::detectMarkers(data.mGreyImg, mDictionary, corners, ids, detectorParams, rejected);
@@ -155,7 +157,10 @@ bool Calibration::findChArUcoCorners(SingleCamDataStruct& data) const
             cv::aruco::drawDetectedCornersCharuco(data.mColImg, currentCharucoCorners, currentCharucoIds);
         }
 
-        cv::aruco::getBoardObjectAndImagePoints(mBoard, corners, ids, currentObjPoints, data.mRawPoints);
+        // convert ChArUco corners and ids into image and object points for camera calibration
+        cv::aruco::getBoardObjectAndImagePoints(mBoard, corners, ids, data.mRawObjectPoints, data.mRawPoints);
+        data.mSingleImgPoints.push_back(data.mRawPoints);
+        data.mSingleObjectPoints.push_back(data.mRawObjectPoints);
     }
 
     return (ids.size() > 0);
@@ -166,18 +171,14 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
 	bool test = true;
     double rms;
     long int i;
-    std::vector<std::vector<cv::Point3f> > objectPoints(1);
     std::vector<cv::Mat> rvecs;
     std::vector<cv::Mat> tvecs;
     cv::FileStorage fs(folder + "/" + data.mName + CALIB_FILE_EXTENSION, cv::FileStorage::WRITE);
 
-    calcChessboardCorners(objectPoints[0]);
     while (test && !data.mSingleImgPoints.empty())
     {
-        objectPoints[0][mBoardSize.width - 1].x = objectPoints[0][0].x + mSquareSize * (mBoardSize.width - 1);
-        objectPoints.resize(data.mSingleImgPoints.size(), objectPoints[0]);
     	test = false;
-		rms = calibrateCamera(objectPoints, data.mSingleImgPoints, mImageSize, data.mCameraMatrix,
+		rms = calibrateCamera(data.mSingleObjectPoints, data.mSingleImgPoints, mImageSize, data.mCameraMatrix,
 							  data.mDist, rvecs, tvecs, data.mStdDevIntrinsics, data.mStdDevExtrinsics, data.mPerViewErrors,
 							  mCalibrationFlags | cv::CALIB_USE_INTRINSIC_GUESS);
 		printf("RMS error reported by calibrateCamera: %g\n", rms);
@@ -190,17 +191,19 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
 			    if (data.mPerViewErrors.at<double>(i) > RMS_THRESHOLD)
 			    {
 				    data.mSingleImgPoints.erase(data.mSingleImgPoints.begin() + i);
+                    data.mSingleObjectPoints.erase(data.mSingleObjectPoints.begin() + i);
 				    test = true;
 			    }
 		    }
         }
     }
 
-    data.mCameraMatrix.copyTo(data.mNewCameraMatrix);
+    data.mNewCameraMatrix = cv::getOptimalNewCameraMatrix(data.mCameraMatrix, data.mDist, mImageSize, 0);
 
     std::cout << CAMERA_MATRIX << ": " << data.mCameraMatrix << "\n";
     std::cout << DISTORTION << ": " << data.mDist << "\n";
     std::cout << "Per View Errors: " << data.mPerViewErrors << "\n";
+    std::cout << "Optimal Camera Matrix for mono camera system: " << data.mNewCameraMatrix << "\n";
     if (fs.isOpened())
     {
         fs << CAMERA_MATRIX << data.mCameraMatrix;
@@ -222,20 +225,17 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
     long int i;
     int scale = 4; // 4
 	//cv::Mat temp1, temp2;
-    std::vector<std::vector<cv::Point3f> > objectPoints(1);
     cv::FileStorage fs(folder + "/" + STEREO_CALIB_FILE + CALIB_FILE_EXTENSION, cv::FileStorage::WRITE);
 
-    calcChessboardCorners(objectPoints[0]);
     puts("Running stereoCalibrate");
     while (test && !stereo.mLCam.mStereoImgPoints.empty() && !stereo.mRCam.mStereoImgPoints.empty())
     {
-        objectPoints.resize(stereo.mLCam.mStereoImgPoints.size(), objectPoints[0]);
     	test = false;
         //stereo.mLCam.mDist.copyTo(temp1);
         //stereo.mRCam.mDist.copyTo(temp2);
         /** Provide a copy of distortion parameters because otherwise they will be overridden!
          *  CALIB_FIX_INTRINSIC somehow still modifies them. */
-		rms = stereoCalibrate(objectPoints, stereo.mLCam.mStereoImgPoints, stereo.mRCam.mStereoImgPoints,
+		rms = stereoCalibrate(stereo.mLCam.mStereoObjectPoints, stereo.mLCam.mStereoImgPoints, stereo.mRCam.mStereoImgPoints,
 						stereo.mLCam.mCameraMatrix, stereo.mLCam.mDist,
 						stereo.mRCam.mCameraMatrix, stereo.mRCam.mDist,
 						mImageSize, stereo.mRotation, stereo.mTranslation, stereo.mEssential, stereo.mFundamental,
@@ -255,6 +255,8 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 			    {
 				    stereo.mLCam.mStereoImgPoints.erase(stereo.mLCam.mStereoImgPoints.begin() + i);
 				    stereo.mRCam.mStereoImgPoints.erase(stereo.mRCam.mStereoImgPoints.begin() + i);
+                    stereo.mLCam.mStereoObjectPoints.erase(stereo.mLCam.mStereoObjectPoints.begin() + i);
+                    stereo.mLCam.mStereoObjectPoints.erase(stereo.mRCam.mStereoObjectPoints.begin() + i);
 				    test = true;
 			    }
 		    }

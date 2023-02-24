@@ -59,6 +59,12 @@ struct SingleCamDataStruct
     std::vector<std::vector<cv::Point2f> > mStereoImgPoints;
     /** The list of image points for one image. */
     std::vector<cv::Point2f> mRawPoints;
+    /** Object points for single camera calibration. */
+    std::vector<std::vector<cv::Point3f> > mSingleObjectPoints;
+    /** Object points for stereo camera calibration. */
+    std::vector<std::vector<cv::Point3f> > mStereoObjectPoints;
+    /** The list of object points for one image. */
+    std::vector<cv::Point3f> mRawObjectPoints;
 
     /**
      * Structure constructor initialises matrices with images size.

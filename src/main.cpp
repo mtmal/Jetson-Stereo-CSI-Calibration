@@ -117,6 +117,7 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
     }
     cv::cvtColor(data.mColImg, data.mGreyImg, cv::COLOR_BGR2GRAY);
     data.mRawPoints.clear();
+    data.mRawObjectPoints.clear();
     retVal = calib.findCorners(data);
     if (retVal)
     {
@@ -153,19 +154,14 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
         lCamFlag = analyseImg(calib, file, folderWithResults, stereo.mLCam);
         rCamFlag = analyseImg(calib, std::regex_replace(file,
         		std::regex(LEFT_IMAGE_SUFFIX), RIGHT_IMAGE_SUFFIX), folderWithResults, stereo.mRCam);
-        if (lCamFlag)
-        {
-            stereo.mLCam.mSingleImgPoints.push_back(stereo.mLCam.mRawPoints);
-        }
-        if (rCamFlag)
-        {
-            stereo.mRCam.mSingleImgPoints.push_back(stereo.mRCam.mRawPoints);
-        }
-        if (lCamFlag && rCamFlag)
+        if (lCamFlag && rCamFlag && (stereo.mLCam.mRawPoints.size() == stereo.mRCam.mRawPoints.size()))
         {
             printf("Image #%d \n", ++counter);
             stereo.mLCam.mStereoImgPoints.push_back(stereo.mLCam.mRawPoints);
             stereo.mRCam.mStereoImgPoints.push_back(stereo.mRCam.mRawPoints);
+
+            stereo.mLCam.mStereoObjectPoints.push_back(stereo.mLCam.mRawObjectPoints);
+            stereo.mRCam.mStereoObjectPoints.push_back(stereo.mRCam.mRawObjectPoints);
         }
     }
 }
