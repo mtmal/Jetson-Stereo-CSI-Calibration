@@ -165,7 +165,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 	static const cv::TermCriteria DEFAULT_CRITERIA_STEREO(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 100, 1e-5);
 
 	bool test = true;
-    double err;
+    double rms;
     long int i;
     int scale = 4; // 4
 	//cv::Mat temp1, temp2;
@@ -182,16 +182,16 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
         //stereo.mRCam.mDist.copyTo(temp2);
         /** Provide a copy of distortion parameters because otherwise they will be overridden!
          *  CALIB_FIX_INTRINSIC somehow still modifies them. */
-		err = stereoCalibrate(objectPoints, stereo.mLCam.mStereoImgPoints, stereo.mRCam.mStereoImgPoints,
+		rms = stereoCalibrate(objectPoints, stereo.mLCam.mStereoImgPoints, stereo.mRCam.mStereoImgPoints,
 						stereo.mLCam.mCameraMatrix, stereo.mLCam.mDist,
 						stereo.mRCam.mCameraMatrix, stereo.mRCam.mDist,
 						mImageSize, stereo.mRotation, stereo.mTranslation, stereo.mEssential, stereo.mFundamental,
 						stereo.mPerViewErrors,
 						cv::CALIB_FIX_INTRINSIC + cv::CALIB_USE_EXTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL,
 						DEFAULT_CRITERIA_STEREO);
-		printf("RMS error reported by stereoCalibrate: %g\n", err);
+		printf("RMS error reported by stereoCalibrate: %g\n", rms);
 
-        if (err > RMS_THRESHOLD * scale)
+        if (rms > RMS_THRESHOLD * scale)
         {
 		    // we check now RMS for individual images. If any exceeds threshold, remove the pair and repeat calibration.
 		    for (i = stereo.mLCam.mStereoImgPoints.size() - 1; i >= 0; --i)
