@@ -51,9 +51,6 @@ static std::string FOLDER_MAIN;
 static std::string FOLDER_STEREO;
 
 
-// to restart CSI camera in system use command:
-// $sudo systemctl restart nvargus-daemon
-
 /**
  * Prints help information about this application.
  *  @param name the name of the executable.
@@ -61,15 +58,19 @@ static std::string FOLDER_STEREO;
 void printHelp(const char* name)
 {
 	printf("Usage: %s [options] \n", name);
-	printf("    -h, --help     -> prints this information \n");
-	printf("    -o, --offline  -> sets the path to the folder with previously captured images, default: capture images from camera. \n");
-	printf("    -c, --cols     -> sets the number of columns (width) of the checkerboard, default: 6 \n");
-	printf("    -r, --rows     -> sets the number of rows (height) of the checkerboard, default: 9 \n");
-	printf("    -w, --window   -> sets the size of window for sub-pixel refinement, default: 33 \n");
-	printf("    -s, --square   -> sets the checkerboard's square size in the same units as baseline, default: 0.008 \n");
-	printf("    -b, --baseline -> sets the stereo camera baseline in X axis in the same units as the square, default: -0.06 \n");
-	printf("    -ic,--img_cols -> the width of an image, default: as for mode 0 \n");
-	printf("    -ir,--img_rows -> the height of an image, default: as for mode 0 \n");
+	printf("    -h,  --help      -> prints this information \n");
+	printf("    -o,  --offline   -> sets the path to the folder with previously captured images, default: capture images from camera. \n");
+	printf("    -c,  --cols      -> sets the number of columns (width) of the checkerboard, default: 6 \n");
+	printf("    -r,  --rows      -> sets the number of rows (height) of the checkerboard, default: 9 \n");
+	printf("    -w,  --window    -> sets the size of window for sub-pixel refinement, default: 33 \n");
+	printf("    -s,  --square    -> sets the checkerboard's square size in the same units as baseline, default: 0.008 \n");
+	printf("    -b,  --baseline  -> sets the stereo camera baseline in X axis in the same units as the square, default: -0.06 \n");
+	printf("    -ic, --img_cols  -> the width of an image, default: as for mode 0 \n");
+	printf("    -ir, --img_rows  -> the height of an image, default: as for mode 0 \n");
+    printf("    -zt, --zero_tang -> sets zero tangential distortion \n");
+    printf("    -cd, --char_dict -> ChArUco dictionary: DICT_4X4_50=0, DICT_4X4_100=1, DICT_4X4_250=2, DICT_4X4_1000=3, DICT_5X5_50=4, DICT_5X5_100=5, DICT_5X5_250=6, DICT_5X5_1000=7, DICT_6X6_50=8, DICT_6X6_100=9, DICT_6X6_250=10, DICT_6X6_1000=11, DICT_7X7_50=12, DICT_7X7_100=13, DICT_7X7_250=14, DICT_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16 \n");
+    printf("    -rf, --ref_strat -> sets the refine strategy to be applied for ChArUco detections \n");
+    printf("    -m,  --marker    -> sets the size of ChArUco marker, by default it is 0.8 of the square size \n");
 	printf("\nExample: %s -o <path_to_images> \n\n", name);
 	printf("NOTE: if the application that uses nvargus to control cameras was killed without releasing the cameras,"
 			" execute the following:\n\n"
@@ -215,6 +216,7 @@ char* parseInputs(int argc, char** argv, Calibration& calib, double& baseline, c
         else if ((0 == strcmp(argv[i], "--square")) || (0 == strcmp(argv[i], "-s")))
         {
         	calib.setSquareSize(static_cast<float>(atof(argv[i + 1])));
+            calib.setMarkerSize(static_cast<float>(atof(argv[i + 1])) * 0.8f);
         }
         else if ((0 == strcmp(argv[i], "--baseline")) || (0 == strcmp(argv[i], "-b")))
         {
@@ -232,6 +234,22 @@ char* parseInputs(int argc, char** argv, Calibration& calib, double& baseline, c
         else if ((0 == strcmp(argv[i], "--img_rows")) || (0 == strcmp(argv[i], "-ir")))
         {
         	imageSize.height = atoi(argv[i + 1]);
+        }
+        else if ((0 == strcmp(argv[i], "--zero_tang")) || (0 == strcmp(argv[i], "-zt")))
+        {
+            calib.setZeroTangentialDist();
+        }
+        else if ((0 == strcmp(argv[i], "--char_dict")) || (0 == strcmp(argv[i], "-d")))
+        {
+            calib.setChArUcoDictionary(atoi(argv[i + 1]));
+        }
+        else if ((0 == strcmp(argv[i], "--ref_strat")) || (0 == strcmp(argv[i], "-rf")))
+        {
+            calib.setRefinedStrategy(true);
+        }
+        else if ((0 == strcmp(argv[i], "--marker")) || (0 == strcmp(argv[i], "-m")))
+        {
+            calib.setMarkerSize(static_cast<float>(atof(argv[i + 1])));
         }
 		else
 		{
@@ -265,6 +283,7 @@ int main(int argc, char** argv)
     /** The structure that holds all information for stereo camera calibration. */
     StereoCamDataStruct stereoData(imageSize, DISPLAY_SIZE, CSI_Camera::FOCAL_LENGTH_M, CSI_Camera::SENSOR_WIDTH_M, baseline);
 
+    calib.initialise();
     if (nullptr == offlinePath)
     {
     	/* We will be acquiring images of calibration board, therefore we need to create all folders first. */

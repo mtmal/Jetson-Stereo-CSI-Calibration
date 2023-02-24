@@ -25,6 +25,17 @@
 
 #include "DataStruct.h"
 
+/* Forward declaration of classes. */
+namespace cv
+{
+    namespace aruco
+    {
+        class Dictionary;
+        class CharucoBoard;
+        class Board;
+    } // namespace aruco
+} // namespace cv
+
 /**
  * This class provides all means for stereo camera calibration using checkerboard.
  */
@@ -44,6 +55,11 @@ public:
      * Empty destructor.
      */
     virtual ~Calibration();
+
+    /**
+     * Initialises the class. Mainly used in case ChArUco codes are used for calibration so that all necessary variables are set.
+     */
+    void initialise();
 
     /**
      * Finds chess corner using provided greyscale image.
@@ -108,6 +124,14 @@ public:
     }
 
     /**
+     *  @param markerSize new size of ChArUco marker in the same units as stereo baseline.
+     */
+    inline void setMarkerSize(const float markerSize)
+    {
+    	mMarkerSize = markerSize;
+    }
+
+    /**
      *  @param imageSize the new image size.
      */
     inline void setImageSize(const cv::Size& imageSize)
@@ -122,6 +146,24 @@ public:
     {
         return mImageSize;
     }
+
+    /**
+     * Sets the cv::CALIB_ZERO_TANGENT_DIST flag for camera calibration.
+     */
+    void setZeroTangentialDist();
+
+    /**
+     *  @param refinedStrategy sets the new flag for refined strategy.
+     */
+    inline void setRefinedStrategy(const bool refinedStrategy)
+    {
+        mRefinedStrategy = refinedStrategy;
+    }
+
+    /**
+     *  @dictionaryId the ID of the ChArUco dictionary used for camera caliration.
+     */
+    void setChArUcoDictionary(const int dictionaryId);
 
 private:
     /**
@@ -138,6 +180,18 @@ private:
     cv::Size mWindowSize;
     /** The size of a single square in the same units as stereo baseline. */
     float mSquareSize;
+    /** The size of a ChArUco marker in the same units as stereo baseline. */
+    float mMarkerSize;
+    /** Generic calibration flags for both single and stereo camera calibration. Initialised with cv::CALIB_RATIONAL_MODEL. */
+    int mCalibrationFlags;
+    /** Flag indicating if ChArUco refined strategy should be applied. False by default. */
+    bool mRefinedStrategy;
+    /** The dictionary of ChArUco calibration board. */
+    cv::Ptr<cv::aruco::Dictionary> mDictionary;
+    /** The ChArUco board */
+    cv::Ptr<cv::aruco::CharucoBoard> mCharucoboard;
+    /** The general board obtained from the ChArUco board. */
+    cv::Ptr<cv::aruco::Board> mBoard;
 };
 
 #endif // __CHESSBOARDDETECTOR_H__

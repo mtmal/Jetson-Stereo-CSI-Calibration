@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <opencv2/aruco/charuco.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core/persistence.hpp>
 #include <opencv2/imgproc.hpp>
@@ -85,12 +86,27 @@ void calibrationQualityCheck(const StereoCamDataStruct& stereo)
 } /* end of the anonymous namespace */
 
 Calibration::Calibration(const cv::Size& imageSize,const cv::Size& boardSize, const int windowSize, const float squareSize)
-: mImageSize(imageSize), mBoardSize(boardSize), mWindowSize(windowSize, windowSize), mSquareSize(squareSize)
+: mImageSize(imageSize), mBoardSize(boardSize), mWindowSize(windowSize, windowSize), mSquareSize(squareSize), mMarkerSize(-1.0f),
+  mCalibrationFlags(cv::CALIB_RATIONAL_MODEL), mRefinedStrategy(false), mDictionary(nullptr), mCharucoboard(nullptr), mBoard(nullptr)
 {
 }
 
 Calibration::~Calibration()
 {
+}
+
+void Calibration::initialise()
+{
+    /* ChArUco codes are used */
+    if (nullptr != mDictionary)
+    {
+        if (mMarkerSize < 0)
+        {
+            mMarkerSize = mSquareSize * 0.8f;
+        }
+        mCharucoboard = cv::aruco::CharucoBoard::create(mBoardSize.width, mBoardSize.height, mSquareSize, mMarkerSize, mDictionary);
+        mBoard = mCharucoboard.staticCast<cv::aruco::Board>();
+    }
 }
 
 bool Calibration::findChessCorners(SingleCamDataStruct& data) const
@@ -126,7 +142,7 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
     	test = false;
 		rms = calibrateCamera(objectPoints, data.mSingleImgPoints, mImageSize, data.mCameraMatrix,
 							  data.mDist, rvecs, tvecs, data.mStdDevIntrinsics, data.mStdDevExtrinsics, data.mPerViewErrors,
-							  cv::CALIB_USE_INTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL);
+							  mCalibrationFlags | cv::CALIB_USE_INTRINSIC_GUESS);
 		printf("RMS error reported by calibrateCamera: %g\n", rms);
 
         if (rms > RMS_THRESHOLD)
@@ -187,7 +203,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 						stereo.mRCam.mCameraMatrix, stereo.mRCam.mDist,
 						mImageSize, stereo.mRotation, stereo.mTranslation, stereo.mEssential, stereo.mFundamental,
 						stereo.mPerViewErrors,
-						cv::CALIB_FIX_INTRINSIC + cv::CALIB_USE_EXTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL,
+						mCalibrationFlags | cv::CALIB_FIX_INTRINSIC | cv::CALIB_USE_EXTRINSIC_GUESS,
 						DEFAULT_CRITERIA_STEREO);
 		printf("RMS error reported by stereoCalibrate: %g\n", rms);
 
@@ -247,6 +263,16 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
     puts("Checking calibration quality 2");
     // that should give better results as we use new camera matrix and rectification rotation, but it does not. why?
     calibrationQualityCheck(stereo);
+}
+
+void Calibration::setZeroTangentialDist()
+{
+    mCalibrationFlags |= cv::CALIB_ZERO_TANGENT_DIST;
+}
+
+void Calibration::setChArUcoDictionary(const int dictionaryId)
+{
+    mDictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
 }
 
 void Calibration::calcChessboardCorners(std::vector<cv::Point3f>& corners) const
