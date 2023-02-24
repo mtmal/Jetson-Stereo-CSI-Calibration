@@ -68,6 +68,8 @@ void printHelp(const char* name)
 	printf("    -w, --window   -> sets the size of window for sub-pixel refinement, default: 33 \n");
 	printf("    -s, --square   -> sets the checkerboard's square size in the same units as baseline, default: 0.008 \n");
 	printf("    -b, --baseline -> sets the stereo camera baseline in X axis in the same units as the square, default: -0.06 \n");
+	printf("    -ic,--img_cols -> the width of an image, default: as for mode 0 \n");
+	printf("    -ir,--img_rows -> the height of an image, default: as for mode 0 \n");
 	printf("\nExample: %s -o <path_to_images> \n\n", name);
 	printf("NOTE: if the application that uses nvargus to control cameras was killed without releasing the cameras,"
 			" execute the following:\n\n"
@@ -106,6 +108,12 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
 {
     bool retVal;
     data.mColImg = cv::imread(file); // we want coloured image as well
+    if ((data.mColImg.cols != calib.getImageSize().width) || (data.mColImg.rows != calib.getImageSize().height))
+    {
+        cv::Mat resized;
+        cv::resize(data.mColImg, resized, calib.getImageSize());
+        resized.copyTo(data.mColImg);
+    }
     cv::cvtColor(data.mColImg, data.mGreyImg, cv::COLOR_BGR2GRAY);
     data.mRawPoints.clear();
     retVal = calib.findChessCorners(data);
@@ -183,7 +191,7 @@ void saveImage(StereoCamDataStruct& stereoData)
     cv::imwrite(FOLDER_STEREO + timestamp + RIGHT_IMAGE_SUFFIX, stereoData.mRCam.mColImg);
 }
 
-char* parseInputs(int argc, char** argv, Calibration& calib, StereoCamDataStruct& stereoData)
+char* parseInputs(int argc, char** argv, Calibration& calib, double& baseline, cv::Size& imageSize)
 {
 	char* offlinePath = nullptr;
     for (int i = 1; i < argc; ++i)
@@ -210,29 +218,44 @@ char* parseInputs(int argc, char** argv, Calibration& calib, StereoCamDataStruct
         }
         else if ((0 == strcmp(argv[i], "--baseline")) || (0 == strcmp(argv[i], "-b")))
         {
-        	stereoData.mTranslation.at<double>(0) = atof(argv[i + 1]);
+        	baseline = atof(argv[i + 1]);
         }
         else if ((0 == strcmp(argv[i], "--help")) || (0 == strcmp(argv[i], "-h")))
         {
         	printHelp(argv[0]);
         	exit(0);
         }
+        else if ((0 == strcmp(argv[i], "--img_cols")) || (0 == strcmp(argv[i], "-ic")))
+        {
+        	imageSize.width = atoi(argv[i + 1]);
+        }
+        else if ((0 == strcmp(argv[i], "--img_rows")) || (0 == strcmp(argv[i], "-ir")))
+        {
+        	imageSize.height = atoi(argv[i + 1]);
+        }
 		else
 		{
 			/* nothing to do in here */
 		}
     }
+    calib.setImageSize(imageSize);
     return offlinePath;
 }
 
 int main(int argc, char** argv)
 {
 	/** Image size for CSI cameras. */
-    cv::Size imageSize(640, 480);
+    cv::Size imageSize;
     /** The mode in which CSI cameras should operate. */
     unsigned int mode = 0;
     /** The frequency at which CSI cameras should acquire images. */
     unsigned int framerate = CSI_Camera::getSizeForMode(mode, imageSize);
+    /** Class which provides all functionality for stereo camera calibration. */
+    Calibration calib(imageSize, cv::Size(6, 9), 33, 0.008f);
+    /** Stereo baseline in metres. */
+    double baseline = -0.06;
+    /* Parse any user inputs. */
+    char* offlinePath = parseInputs(argc, argv, calib, baseline, imageSize);
     /** The ASCII code of key pressed by the user. */
     int key = 0;
     /** The error code returned by this application. */
@@ -240,11 +263,7 @@ int main(int argc, char** argv)
     /** The CSI stereo camera wrapper. */
     CSI_StereoCamera stereoCamera(imageSize);
     /** The structure that holds all information for stereo camera calibration. */
-    StereoCamDataStruct stereoData(imageSize, DISPLAY_SIZE, CSI_Camera::FOCAL_LENGTH_M, CSI_Camera::SENSOR_WIDTH_M, -0.06);
-    /** Class which provides all functionality for stereo camera calibration. */
-    Calibration calib(imageSize, cv::Size(6, 9), 33, 0.008f);
-    /* Parse any user inputs. */
-    char* offlinePath = parseInputs(argc, argv, calib, stereoData);
+    StereoCamDataStruct stereoData(imageSize, DISPLAY_SIZE, CSI_Camera::FOCAL_LENGTH_M, CSI_Camera::SENSOR_WIDTH_M, baseline);
 
     if (nullptr == offlinePath)
     {

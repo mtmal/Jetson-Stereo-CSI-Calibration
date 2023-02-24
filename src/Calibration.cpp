@@ -129,15 +129,18 @@ void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamData
 							  cv::CALIB_USE_INTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL);
 		printf("RMS error reported by calibrateCamera: %g\n", rms);
 
-		// we check now RMS for individual images. If any exceeds threshold, remove it and repeat calibration.
-		for (i = data.mSingleImgPoints.size() - 1; i >= 0; --i)
-		{
-			if (data.mPerViewErrors.at<double>(i) > RMS_THRESHOLD)
-			{
-				data.mSingleImgPoints.erase(data.mSingleImgPoints.begin() + i);
-				test = true;
-			}
-		}
+        if (rms > RMS_THRESHOLD)
+        {
+		    // we check now RMS for individual images. If any exceeds threshold, remove it and repeat calibration.
+		    for (i = data.mSingleImgPoints.size() - 1; i >= 0; --i)
+		    {
+			    if (data.mPerViewErrors.at<double>(i) > RMS_THRESHOLD)
+			    {
+				    data.mSingleImgPoints.erase(data.mSingleImgPoints.begin() + i);
+				    test = true;
+			    }
+		    }
+        }
     }
 
     data.mCameraMatrix.copyTo(data.mNewCameraMatrix);
@@ -164,7 +167,8 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 	bool test = true;
     double err;
     long int i;
-	cv::Mat temp1, temp2;
+    int scale = 4; // 4
+	//cv::Mat temp1, temp2;
     std::vector<std::vector<cv::Point3f> > objectPoints(1);
     cv::FileStorage fs(folder + "/" + STEREO_CALIB_FILE + CALIB_FILE_EXTENSION, cv::FileStorage::WRITE);
 
@@ -174,31 +178,34 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
     {
         objectPoints.resize(stereo.mLCam.mStereoImgPoints.size(), objectPoints[0]);
     	test = false;
-        stereo.mLCam.mDist.copyTo(temp1);
-        stereo.mRCam.mDist.copyTo(temp2);
+        //stereo.mLCam.mDist.copyTo(temp1);
+        //stereo.mRCam.mDist.copyTo(temp2);
         /** Provide a copy of distortion parameters because otherwise they will be overridden!
          *  CALIB_FIX_INTRINSIC somehow still modifies them. */
 		err = stereoCalibrate(objectPoints, stereo.mLCam.mStereoImgPoints, stereo.mRCam.mStereoImgPoints,
-						stereo.mLCam.mCameraMatrix, temp1,
-						stereo.mRCam.mCameraMatrix, temp2,
+						stereo.mLCam.mCameraMatrix, stereo.mLCam.mDist,
+						stereo.mRCam.mCameraMatrix, stereo.mRCam.mDist,
 						mImageSize, stereo.mRotation, stereo.mTranslation, stereo.mEssential, stereo.mFundamental,
 						stereo.mPerViewErrors,
-						cv::CALIB_FIX_INTRINSIC + cv::CALIB_RATIONAL_MODEL + cv::CALIB_USE_EXTRINSIC_GUESS,
+						cv::CALIB_FIX_INTRINSIC + cv::CALIB_USE_EXTRINSIC_GUESS + cv::CALIB_RATIONAL_MODEL,
 						DEFAULT_CRITERIA_STEREO);
 		printf("RMS error reported by stereoCalibrate: %g\n", err);
 
-		// we check now RMS for individual images. If any exceeds threshold, remove the pair and repeat calibration.
-		for (i = stereo.mLCam.mStereoImgPoints.size() - 1; i >= 0; --i)
-		{
-			// stereo calibration often gives higher RMS which is OK, but needs to be reflected in the test
-			if (stereo.mPerViewErrors.at<double>(i, 0) > RMS_THRESHOLD * 4 ||
-				stereo.mPerViewErrors.at<double>(i, 1) > RMS_THRESHOLD * 4)
-			{
-				stereo.mLCam.mStereoImgPoints.erase(stereo.mLCam.mStereoImgPoints.begin() + i);
-				stereo.mRCam.mStereoImgPoints.erase(stereo.mRCam.mStereoImgPoints.begin() + i);
-				test = true;
-			}
-		}
+        if (err > RMS_THRESHOLD * scale)
+        {
+		    // we check now RMS for individual images. If any exceeds threshold, remove the pair and repeat calibration.
+		    for (i = stereo.mLCam.mStereoImgPoints.size() - 1; i >= 0; --i)
+		    {
+			    // stereo calibration often gives higher RMS which is OK, but needs to be reflected in the test
+			    if (stereo.mPerViewErrors.at<double>(i, 0) > RMS_THRESHOLD * scale ||
+				    stereo.mPerViewErrors.at<double>(i, 1) > RMS_THRESHOLD * scale)
+			    {
+				    stereo.mLCam.mStereoImgPoints.erase(stereo.mLCam.mStereoImgPoints.begin() + i);
+				    stereo.mRCam.mStereoImgPoints.erase(stereo.mRCam.mStereoImgPoints.begin() + i);
+				    test = true;
+			    }
+		    }
+        }
     }
 
     std::cout << "Rotation Matrix: " << stereo.mRotation << "\n";

@@ -107,6 +107,22 @@ public:
     	mSquareSize = squareSize;
     }
 
+    /**
+     *  @param imageSize the new image size.
+     */
+    inline void setImageSize(const cv::Size& imageSize)
+    {
+        mImageSize = imageSize;
+    }
+
+    /**
+     *  @return the size of images for calibration.
+     */
+    inline const cv::Size& getImageSize() const
+    {
+        return mImageSize;
+    }
+
 private:
     /**
      * Populates the list with checkerboard corners coordinates.
