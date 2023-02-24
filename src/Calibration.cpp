@@ -124,6 +124,43 @@ bool Calibration::findChessCorners(SingleCamDataStruct& data) const
     return found;
 }
 
+bool Calibration::findChArUcoCorners(SingleCamDataStruct& data) const
+{
+    static const cv::Ptr<cv::aruco::DetectorParameters> detectorParams = cv::aruco::DetectorParameters::create();
+    std::vector<int> ids;
+    std::vector<std::vector<cv::Point2f> > corners;
+    std::vector<std::vector<cv::Point2f> > rejected;
+    cv::Mat currentCharucoCorners;
+    cv::Mat currentCharucoIds;
+    cv::Mat currentObjPoints;
+
+    // detect markers
+    cv::aruco::detectMarkers(data.mGreyImg, mDictionary, corners, ids, detectorParams, rejected);
+
+    // refind strategy to detect more markers
+    if (mRefinedStrategy)
+    {
+        cv::aruco::refineDetectedMarkers(data.mGreyImg, mBoard, corners, ids, rejected, data.mCameraMatrix);
+    }
+
+    if (ids.size() > 0)
+    {
+        // interpolate charuco corners
+        cv::aruco::interpolateCornersCharuco(corners, ids, data.mGreyImg, mCharucoboard, currentCharucoCorners,
+                                         currentCharucoIds, data.mCameraMatrix);
+        // draw markers and corners onto an image
+        cv::aruco::drawDetectedMarkers(data.mColImg, corners, ids);
+        if (currentCharucoCorners.total() > 0)
+        {
+            cv::aruco::drawDetectedCornersCharuco(data.mColImg, currentCharucoCorners, currentCharucoIds);
+        }
+
+        cv::aruco::getBoardObjectAndImagePoints(mBoard, corners, ids, currentObjPoints, data.mRawPoints);
+    }
+
+    return (ids.size() > 0);
+}
+
 void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamDataStruct& data) const
 {
 	bool test = true;

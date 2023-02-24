@@ -62,11 +62,14 @@ public:
     void initialise();
 
     /**
-     * Finds chess corner using provided greyscale image.
+     * Finds corner of either a chess board or ChArUco markers using provided greyscale image.
      * Corner points are assigned to raw points buffer and overlaid on coloured image.
      *  @param[in/out] data the structure which provides the latest image and stores all image points.
      */
-    bool findChessCorners(SingleCamDataStruct& data) const;
+    inline bool findCorners(SingleCamDataStruct& data) const
+    {
+        return (nullptr == mDictionary) ? findChessCorners(data) : findChArUcoCorners(data);
+    }
 
     /**
      * Performs a single camera calibration using provided data. OpenCV's calibrateCamera may be called several times.
@@ -171,6 +174,20 @@ private:
      *  @param[out] corners the list the corners coordinates.
      */
     void calcChessboardCorners(std::vector<cv::Point3f>& corners) const;
+
+    /**
+     * Finds chess corner using provided greyscale image.
+     * Corner points are assigned to raw points buffer and overlaid on coloured image.
+     *  @param[in/out] data the structure which provides the latest image and stores all image points.
+     */
+    bool findChessCorners(SingleCamDataStruct& data) const;
+
+    /**
+     * Finds ChArUco corner using provided greyscale image.
+     * Corner points are assigned to raw points buffer and overlaid on coloured image.
+     *  @param[in/out] data the structure which provides the latest image and stores all image points.
+     */
+    bool findChArUcoCorners(SingleCamDataStruct& data) const;
 
     /** The size of images that will be calibrated. */
     cv::Size mImageSize;

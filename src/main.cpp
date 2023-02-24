@@ -117,7 +117,7 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
     }
     cv::cvtColor(data.mColImg, data.mGreyImg, cv::COLOR_BGR2GRAY);
     data.mRawPoints.clear();
-    retVal = calib.findChessCorners(data);
+    retVal = calib.findCorners(data);
     if (retVal)
     {
         cv::imwrite(resultFolder + file.substr(file.find_last_of("/") + 1), data.mColImg);
