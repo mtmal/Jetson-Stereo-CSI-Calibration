@@ -66,10 +66,7 @@ public:
      * Corner points are assigned to raw points buffer and overlaid on coloured image.
      *  @param[in/out] data the structure which provides the latest image and stores all image points.
      */
-    inline bool findCorners(SingleCamDataStruct& data) const
-    {
-        return (nullptr == mDictionary) ? findChessCorners(data) : findChArUcoCorners(data);
-    }
+    bool findCorners(SingleCamDataStruct& data) const;
 
     /**
      * Performs a single camera calibration using provided data. OpenCV's calibrateCamera may be called several times.

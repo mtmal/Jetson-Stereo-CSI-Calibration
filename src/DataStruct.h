@@ -65,6 +65,8 @@ struct SingleCamDataStruct
     std::vector<std::vector<cv::Point3f> > mStereoObjectPoints;
     /** The list of object points for one image. */
     std::vector<cv::Point3f> mRawObjectPoints;
+    /** The list of ChArUco indices that were detected in an image. */
+    std::vector<int> mChArUcoIndices;
 
     /**
      * Structure constructor initialises matrices with images size.

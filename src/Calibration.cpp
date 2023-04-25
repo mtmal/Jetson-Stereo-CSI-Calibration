@@ -109,6 +109,14 @@ void Calibration::initialise()
     }
 }
 
+bool Calibration::findCorners(SingleCamDataStruct& data) const
+{
+    data.mRawPoints.clear();
+    data.mRawObjectPoints.clear();
+    data.mChArUcoIndices.clear();
+    return (nullptr == mDictionary) ? findChessCorners(data) : findChArUcoCorners(data);
+}
+
 bool Calibration::findChessCorners(SingleCamDataStruct& data) const
 {
 	static const cv::Size DEFAULT_SIZE(-1, -1);
@@ -130,40 +138,39 @@ bool Calibration::findChessCorners(SingleCamDataStruct& data) const
 bool Calibration::findChArUcoCorners(SingleCamDataStruct& data) const
 {
     static const cv::Ptr<cv::aruco::DetectorParameters> detectorParams = cv::aruco::DetectorParameters::create();
-    std::vector<int> ids;
     std::vector<std::vector<cv::Point2f> > corners;
     std::vector<std::vector<cv::Point2f> > rejected;
     cv::Mat currentCharucoCorners;
     cv::Mat currentCharucoIds;
 
     // detect markers
-    cv::aruco::detectMarkers(data.mGreyImg, mDictionary, corners, ids, detectorParams, rejected);
+    cv::aruco::detectMarkers(data.mGreyImg, mDictionary, corners, data.mChArUcoIndices, detectorParams, rejected);
 
     // refind strategy to detect more markers
     if (mRefinedStrategy)
     {
-        cv::aruco::refineDetectedMarkers(data.mGreyImg, mBoard, corners, ids, rejected, data.mCameraMatrix);
+        cv::aruco::refineDetectedMarkers(data.mGreyImg, mBoard, corners, data.mChArUcoIndices, rejected);
     }
 
-    if (ids.size() > 0)
+    if (data.mChArUcoIndices.size() > 0)
     {
         // interpolate charuco corners
-        cv::aruco::interpolateCornersCharuco(corners, ids, data.mGreyImg, mCharucoboard, currentCharucoCorners,
+        cv::aruco::interpolateCornersCharuco(corners, data.mChArUcoIndices, data.mGreyImg, mCharucoboard, currentCharucoCorners,
                                          currentCharucoIds, data.mCameraMatrix);
         // draw markers and corners onto an image
-        cv::aruco::drawDetectedMarkers(data.mColImg, corners, ids);
+        cv::aruco::drawDetectedMarkers(data.mColImg, corners, data.mChArUcoIndices);
         if (currentCharucoCorners.total() > 0)
         {
             cv::aruco::drawDetectedCornersCharuco(data.mColImg, currentCharucoCorners, currentCharucoIds);
         }
 
         // convert ChArUco corners and ids into image and object points for camera calibration
-        cv::aruco::getBoardObjectAndImagePoints(mBoard, corners, ids, data.mRawObjectPoints, data.mRawPoints);
+        cv::aruco::getBoardObjectAndImagePoints(mBoard, corners, data.mChArUcoIndices, data.mRawObjectPoints, data.mRawPoints);
         data.mSingleImgPoints.push_back(data.mRawPoints);
         data.mSingleObjectPoints.push_back(data.mRawObjectPoints);
     }
 
-    return (ids.size() > 0);
+    return (data.mChArUcoIndices.size() > 0);
 }
 
 void Calibration::calibrateSingleCamera(const std::string& folder, SingleCamDataStruct& data) const
@@ -246,6 +253,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 
         if (rms > RMS_THRESHOLD * scale)
         {
+            printf("Stereo image points size: %lu \n", stereo.mLCam.mStereoImgPoints.size());
 		    // we check now RMS for individual images. If any exceeds threshold, remove the pair and repeat calibration.
 		    for (i = stereo.mLCam.mStereoImgPoints.size() - 1; i >= 0; --i)
 		    {
@@ -256,7 +264,7 @@ void Calibration::calibrateStereoCamera(const std::string& folder, StereoCamData
 				    stereo.mLCam.mStereoImgPoints.erase(stereo.mLCam.mStereoImgPoints.begin() + i);
 				    stereo.mRCam.mStereoImgPoints.erase(stereo.mRCam.mStereoImgPoints.begin() + i);
                     stereo.mLCam.mStereoObjectPoints.erase(stereo.mLCam.mStereoObjectPoints.begin() + i);
-                    stereo.mLCam.mStereoObjectPoints.erase(stereo.mRCam.mStereoObjectPoints.begin() + i);
+                    stereo.mRCam.mStereoObjectPoints.erase(stereo.mRCam.mStereoObjectPoints.begin() + i);
 				    test = true;
 			    }
 		    }

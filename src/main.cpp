@@ -97,6 +97,39 @@ void populateFoldersNames(const std::string& main)
     FOLDER_STEREO = FOLDER_MAIN + "/" + STEREO_CALIB_FILE + "/";
 }
 
+template <typename T>
+void removeIndicesFromVector(const std::vector<int>& toRemove, const int elements, std::vector<T>& vec)
+{
+    std::for_each(toRemove.crbegin(), toRemove.crend(), [&vec, &elements](const int idx) {vec.erase(begin(vec) + idx*elements, begin(vec) + idx*elements + elements);});
+}
+
+/**
+ * Detect which camera detected more markers and remves those not visible in the other camera.
+ *  @param[in] one the first data struct of camera data
+ *  @param[in/out] two the second struct of camera data.
+ *  @param[in/out] indsToRemove pre-allocate vector for storing indices of markers to remove.
+ */
+void populateIdsToRemove(const SingleCamDataStruct& one, SingleCamDataStruct& two, std::vector<int>& indsToRemove)
+{
+    int i;
+
+    indsToRemove.clear();
+    if (one.mChArUcoIndices.size() != two.mChArUcoIndices.size())
+    {
+        for (i = 0; i < static_cast<int>(two.mChArUcoIndices.size()); ++i)
+        {
+            if (std::find(one.mChArUcoIndices.begin(), one.mChArUcoIndices.end(), two.mChArUcoIndices[i]) == one.mChArUcoIndices.end())
+            {
+                indsToRemove.push_back(i);
+            }
+        }
+
+        removeIndicesFromVector(indsToRemove, 1, two.mChArUcoIndices);
+        removeIndicesFromVector(indsToRemove, 4, two.mRawPoints);
+        removeIndicesFromVector(indsToRemove, 4, two.mRawObjectPoints);
+    }
+}
+
 /**
  * Analyses a single image to determine if the checker board can be found or not.
  *  @param calib the reference the calibration class.
@@ -116,8 +149,6 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
         resized.copyTo(data.mColImg);
     }
     cv::cvtColor(data.mColImg, data.mGreyImg, cv::COLOR_BGR2GRAY);
-    data.mRawPoints.clear();
-    data.mRawObjectPoints.clear();
     retVal = calib.findCorners(data);
     if (retVal)
     {
@@ -145,6 +176,7 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
     bool rCamFlag, lCamFlag;
     std::string folderWithResults(FOLDER_STEREO + "checkerboard/");
     std::vector<std::string> results;
+    std::vector<int> indsToRemove;
 
     mkdir(folderWithResults.c_str(), 0777);
 
@@ -154,14 +186,21 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
         lCamFlag = analyseImg(calib, file, folderWithResults, stereo.mLCam);
         rCamFlag = analyseImg(calib, std::regex_replace(file,
         		std::regex(LEFT_IMAGE_SUFFIX), RIGHT_IMAGE_SUFFIX), folderWithResults, stereo.mRCam);
-        if (lCamFlag && rCamFlag && (stereo.mLCam.mRawPoints.size() == stereo.mRCam.mRawPoints.size()))
+        if (lCamFlag && rCamFlag)
         {
-            printf("Image #%d \n", ++counter);
-            stereo.mLCam.mStereoImgPoints.push_back(stereo.mLCam.mRawPoints);
-            stereo.mRCam.mStereoImgPoints.push_back(stereo.mRCam.mRawPoints);
+            // ChArUco: check which markers are visible in both images and adjust lists
+            populateIdsToRemove(stereo.mLCam, stereo.mRCam, indsToRemove);
+            populateIdsToRemove(stereo.mRCam, stereo.mLCam, indsToRemove);
 
-            stereo.mLCam.mStereoObjectPoints.push_back(stereo.mLCam.mRawObjectPoints);
-            stereo.mRCam.mStereoObjectPoints.push_back(stereo.mRCam.mRawObjectPoints);
+            if (!stereo.mLCam.mChArUcoIndices.empty()) // no need to test both as by now they have the same sizes
+            {
+                printf("Image #%d \n", ++counter);
+                stereo.mLCam.mStereoImgPoints.push_back(stereo.mLCam.mRawPoints);
+                stereo.mRCam.mStereoImgPoints.push_back(stereo.mRCam.mRawPoints);
+
+                stereo.mLCam.mStereoObjectPoints.push_back(stereo.mLCam.mRawObjectPoints);
+                stereo.mRCam.mStereoObjectPoints.push_back(stereo.mRCam.mRawObjectPoints);
+            }
         }
     }
 }
@@ -235,7 +274,7 @@ char* parseInputs(int argc, char** argv, Calibration& calib, double& baseline, c
         {
             calib.setZeroTangentialDist();
         }
-        else if ((0 == strcmp(argv[i], "--char_dict")) || (0 == strcmp(argv[i], "-d")))
+        else if ((0 == strcmp(argv[i], "--char_dict")) || (0 == strcmp(argv[i], "-cd")))
         {
             calib.setChArUcoDictionary(atoi(argv[i + 1]));
         }
@@ -299,7 +338,7 @@ int main(int argc, char** argv)
                 {
                 	/* Display current images. */
                     displayImages(stereoData);
-                    key = cv::waitKey(0) & 0xff;
+                    key = cv::waitKey(30) & 0xff;
                     /** If the user pressed space bar, save images to the file. We will analyse them later.
                      * Otherwise it takes too much time and may cause lags in display. Remember: we are doing
                      * the calibration in the highest possible resolution to get the best possible results. */
