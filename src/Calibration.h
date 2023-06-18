@@ -52,7 +52,7 @@ public:
     Calibration(const cv::Size& imageSize, const cv::Size& boardSize, const int windowSize, const float squareSize);
 
     /**
-     * Empty destructor.
+     * Class destructor.
      */
     virtual ~Calibration();
 
@@ -81,9 +81,7 @@ public:
      * Performs a stereo camera calibration using already-calibrated intrinsics from individual cameras. OpenCV's
      * stereoCalibrate may be called several times. If the RMS for any image is higher than the threshold, the whole
      * pair is removed and the algorithm is repeated. After calibration, calibration quality is checked by estimating
-     * epipolar error. Then, stereoRectify is called and epipolar error is estimated again, this time using new camera
-     * matrices and rectification rotations. However, it gives higher error than using non-rectified matrices.
-     * TODO: why?
+     * epipolar error.
      *  @param folder the path to the folder where a file with stereo camera extrinsics should be saved.
      *  @param[in/out] stereo the data structure holding all stereo camera image points and which hold buffers for
      *  outputs of stereo calibration.
@@ -161,9 +159,17 @@ public:
     }
 
     /**
-     *  @dictionaryId the ID of the ChArUco dictionary used for camera caliration.
+     *  @param dictionaryId the ID of the ChArUco dictionary used for camera caliration.
      */
     void setChArUcoDictionary(const int dictionaryId);
+
+    /**
+     *  @return true if the calibration class was configured for ChArUco markers.
+     */
+    inline bool isChArUco() const
+    {
+        return (nullptr != mDictionary);
+    }
 
 private:
     /**

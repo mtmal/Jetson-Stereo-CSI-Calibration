@@ -126,7 +126,7 @@ void populateIdsToRemove(const SingleCamDataStruct& one, SingleCamDataStruct& tw
 
         removeIndicesFromVector(indsToRemove, 1, two.mChArUcoIndices);
         removeIndicesFromVector(indsToRemove, 4, two.mRawPoints);
-        removeIndicesFromVector(indsToRemove, 4, two.mRawObjectPoints);
+        removeIndicesFromVector(indsToRemove, 4, two.mSingleObjectPoints.back());
     }
 }
 
@@ -142,6 +142,7 @@ bool analyseImg(const Calibration& calib, const std::string& file, const std::st
 {
     bool retVal;
     data.mColImg = cv::imread(file); // we want coloured image as well
+
     if ((data.mColImg.cols != calib.getImageSize().width) || (data.mColImg.rows != calib.getImageSize().height))
     {
         cv::Mat resized;
@@ -174,6 +175,7 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
 {
     int counter = 0;
     bool rCamFlag, lCamFlag;
+    std::string rPath;
     std::string folderWithResults(FOLDER_STEREO + "checkerboard/");
     std::vector<std::string> results;
     std::vector<int> indsToRemove;
@@ -181,25 +183,31 @@ void stereoCamFind(const Calibration& calib, StereoCamDataStruct& stereo)
     mkdir(folderWithResults.c_str(), 0777);
 
     cv::glob(FOLDER_STEREO + "*" + LEFT_IMAGE_SUFFIX, results);
-    for (const std::string& file : results)
+    for (const std::string& lPath : results)
     {
-        lCamFlag = analyseImg(calib, file, folderWithResults, stereo.mLCam);
-        rCamFlag = analyseImg(calib, std::regex_replace(file,
-        		std::regex(LEFT_IMAGE_SUFFIX), RIGHT_IMAGE_SUFFIX), folderWithResults, stereo.mRCam);
+        rPath = std::regex_replace(lPath, std::regex(LEFT_IMAGE_SUFFIX), RIGHT_IMAGE_SUFFIX);
+        lCamFlag = analyseImg(calib, lPath, folderWithResults, stereo.mLCam);
+        rCamFlag = analyseImg(calib, rPath, folderWithResults, stereo.mRCam);
         if (lCamFlag && rCamFlag)
         {
             // ChArUco: check which markers are visible in both images and adjust lists
             populateIdsToRemove(stereo.mLCam, stereo.mRCam, indsToRemove);
             populateIdsToRemove(stereo.mRCam, stereo.mLCam, indsToRemove);
 
-            if (!stereo.mLCam.mChArUcoIndices.empty()) // no need to test both as by now they have the same sizes
+            if (stereo.mLCam.mRawPoints.size() == stereo.mRCam.mRawPoints.size())
             {
                 printf("Image #%d \n", ++counter);
                 stereo.mLCam.mStereoImgPoints.push_back(stereo.mLCam.mRawPoints);
                 stereo.mRCam.mStereoImgPoints.push_back(stereo.mRCam.mRawPoints);
 
-                stereo.mLCam.mStereoObjectPoints.push_back(stereo.mLCam.mRawObjectPoints);
-                stereo.mRCam.mStereoObjectPoints.push_back(stereo.mRCam.mRawObjectPoints);
+                stereo.mLCam.mStereoObjectPoints.push_back(stereo.mLCam.mSingleObjectPoints.back());
+                stereo.mRCam.mStereoObjectPoints.push_back(stereo.mRCam.mSingleObjectPoints.back());
+
+                stereo.mLCam.mImagesStereo.push_back(stereo.mLCam.mGreyImg.clone());
+                stereo.mRCam.mImagesStereo.push_back(stereo.mRCam.mGreyImg.clone());
+
+                stereo.mLCam.mImgPathsStereo.push_back(lPath);
+                stereo.mRCam.mImgPathsStereo.push_back(rPath);
             }
         }
     }
