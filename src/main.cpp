@@ -28,6 +28,7 @@
 #include <opencv2/core/utility.hpp>
 #include <CSI_StereoCamera.h>
 #include "Calibration.h"
+#include "StereoListener.h"
 
 /** The name of the window for left camera image. */
 static const std::string LEFT_WINDOW_NAME  = "Left Cam Image";
@@ -325,6 +326,8 @@ int main(int argc, char** argv)
     CSI_StereoCamera stereoCamera(imageSize);
     /** The structure that holds all information for stereo camera calibration. */
     StereoCamDataStruct stereoData(imageSize, DISPLAY_SIZE, CSI_Camera::FOCAL_LENGTH_M, CSI_Camera::SENSOR_WIDTH_M, baseline);
+    /** A listener for stereo camera class. */
+    StereoListener listener(stereoCamera);
 
     calib.initialise();
     if (nullptr == offlinePath)
@@ -336,32 +339,29 @@ int main(int argc, char** argv)
 
         cv::namedWindow(LEFT_WINDOW_NAME,  cv::WINDOW_AUTOSIZE);
         cv::namedWindow(RIGHT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
-        if (stereoCamera.startCamera(framerate, mode))
+        if (stereoCamera.startCamera(framerate, mode, 0, 1, 2, true, false))
         {
+            listener.initialise(imageSize, true);
+            listener.registerListener();
         	/* The main loop which controls acquiring images from CSI stereo camera. */
             while (ESCAPE_KEY != key)
             {
                 /** We need to take raw images for calibration. */
-                if (stereoCamera.getRawImages(stereoData.mLCam.mColImg, stereoData.mRCam.mColImg))
+                listener.getImages(stereoData.mLCam.mColImg, stereoData.mRCam.mColImg);
+                /* Display current images. */
+                displayImages(stereoData);
+                key = cv::waitKey(30) & 0xff;
+                /** If the user pressed space bar, save images to the file. We will analyse them later.
+                 * Otherwise it takes too much time and may cause lags in display. Remember: we are doing
+                 * the calibration in the highest possible resolution to get the best possible results. */
+                if (SPACE_KEY == key)
                 {
-                	/* Display current images. */
-                    displayImages(stereoData);
-                    key = cv::waitKey(30) & 0xff;
-                    /** If the user pressed space bar, save images to the file. We will analyse them later.
-                     * Otherwise it takes too much time and may cause lags in display. Remember: we are doing
-                     * the calibration in the highest possible resolution to get the best possible results. */
-                    if (SPACE_KEY == key)
-                    {
-                        puts("Saving image");
-                        saveImage(stereoData);
-                    }
-                }
-                else
-                {
-                    puts("Failed to capture raw images");
-                    key = cv::waitKey(30) & 0xff;
+                    puts("Saving image");
+                    saveImage(stereoData);
                 }
             }
+            listener.unregisterListener();
+            stereoCamera.stopCamera();
         }
         else
         {
@@ -402,24 +402,27 @@ int main(int argc, char** argv)
         /* Load the calibration information to CSI cameras. */
         if (stereoCamera.loadCalibration(FOLDER_MAIN))
         {
-        	/* If we haven't started camera yet, do it now. */
-        	if (!stereoCamera.isInitialised())
-        	{
-        		stereoCamera.startCamera(framerate, mode);
-        	}
-
-            key = 0;
-            /* Now we perform visual inspection of calibration. Rectified greyscale images are displayed. */
-            while (stereoCamera.isInitialised() && ESCAPE_KEY != key)
+        	if (stereoCamera.startCamera(framerate, mode, 0, 1, 2, true, true))
             {
-                key = cv::waitKey(30) & 0xff;
-                if (stereoCamera.getRectified(false, stereoData.mLCam.mGreyImg, stereoData.mRCam.mGreyImg))
+                listener.initialise(imageSize, false);
+                listener.registerListener();
+                key = 0;
+                /* Now we perform visual inspection of calibration. Rectified greyscale images are displayed. */
+                while (ESCAPE_KEY != key)
                 {
+                    key = cv::waitKey(30) & 0xff;
+                    listener.getImages(stereoData.mLCam.mGreyImg, stereoData.mRCam.mGreyImg);
                     cv::resize(stereoData.mLCam.mGreyImg, stereoData.mLCam.mDispImg, DISPLAY_SIZE);
                     cv::resize(stereoData.mRCam.mGreyImg, stereoData.mRCam.mDispImg, DISPLAY_SIZE);
                     cv::imshow(LEFT_WINDOW_NAME,  stereoData.mLCam.mDispImg);
                     cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
                 }
+                listener.unregisterListener();
+                stereoCamera.stopCamera();
+            }
+            else
+            {
+                puts("Failed to start camera!");
             }
         }
         else

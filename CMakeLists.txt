@@ -12,9 +12,6 @@ if(LOG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG=1")
 endif()
 
-find_package(OpenCV 4.5 REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIR})
-
 # make sure we have the necessary submodule
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -35,11 +32,19 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/CSI_Camera/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
-add_subdirectory(CSI_Camera)
-include_directories(CSI_Camera/src)
+find_package(OpenCV 4.5 REQUIRED)
+
+# add OpenCV directory
+include_directories(${OpenCV_INCLUDE_DIR})
+# add the main source directory
 include_directories(src)
 
+# add the CSI Camera submodule
+add_subdirectory(CSI_Camera)
+include_directories(CSI_Camera/src)
+include_directories(CSI_Camera/JetracerUtils/src)
+
 # Build the calibration tool
-add_executable(CSI_Camera_Calibration src/Calibration.cpp src/main.cpp)
+add_executable(CSI_Camera_Calibration src/Calibration.cpp src/StereoListener.cpp src/main.cpp)
 target_link_libraries(CSI_Camera_Calibration CSI_Camera ${OpenCV_LIBRARIES})
 
