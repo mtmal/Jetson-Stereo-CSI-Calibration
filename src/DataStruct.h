@@ -63,10 +63,12 @@ struct SingleCamDataStruct
     std::vector<std::vector<cv::Point3f> > mSingleObjectPoints;
     /** Object points for stereo camera calibration. */
     std::vector<std::vector<cv::Point3f> > mStereoObjectPoints;
-    /** The list of object points for one image. */
-    std::vector<cv::Point3f> mRawObjectPoints;
     /** The list of ChArUco indices that were detected in an image. */
     std::vector<int> mChArUcoIndices;
+    /** The list of all greyscale images. */
+    std::vector<cv::Mat> mImagesStereo;
+    /** The list of image paths. */
+    std::vector<std::string> mImgPathsStereo;
 
     /**
      * Structure constructor initialises matrices with images size.
