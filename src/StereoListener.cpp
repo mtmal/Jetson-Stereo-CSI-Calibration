@@ -22,9 +22,12 @@
 
 #include "StereoListener.h"
 
-StereoListener::StereoListener(CSI_StereoCamera& stereoCam) : 
-    IGenericListener<const double, const cv::cuda::HostMem&, const cv::cuda::HostMem&>(),
-    mStereoCam(stereoCam), mId(0), mLeft(), mRight()
+StereoListener::StereoListener(CSI_StereoCamera& stereoCam)
+: IGenericListener<CameraData, CameraData>(),
+  mStereoCam(stereoCam), 
+  mId(0), 
+  mLeft(), 
+  mRight()
 {
     pthread_mutex_init(&mLock, nullptr);
 }
@@ -40,11 +43,11 @@ void StereoListener::initialise(const cv::Size& imageSize, const bool colour)
     mRight = cv::Mat(imageSize, colour ? CV_8UC3 : CV_8UC1);
 }
 
-void StereoListener::update(const double, const cv::cuda::HostMem& left, const cv::cuda::HostMem& right) const
+void StereoListener::update(const CameraData& left, const CameraData& right)
 {
     ScopedLock lock(mLock);
-    mLeft  = left.createMatHeader();
-    mRight = right.createMatHeader();
+    mLeft  = left.mImage.createMatHeader();
+    mRight = right.mImage.createMatHeader();
 }
 
 void StereoListener::getImages(cv::Mat& left, cv::Mat& right) const

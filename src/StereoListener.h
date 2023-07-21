@@ -28,7 +28,7 @@
 /**
  * A simple listener class that saves images and allows them to be copied over by another thread.
  */
-class StereoListener : public IGenericListener<const double, const cv::cuda::HostMem&, const cv::cuda::HostMem&>
+class StereoListener : public IGenericListener<CameraData, CameraData>
 {
 public:
     /**
@@ -66,7 +66,7 @@ public:
     }
 
     // override
-    void update(const double time, const cv::cuda::HostMem& left, const cv::cuda::HostMem& right) const;
+    void update(const CameraData& left, const CameraData& right);
 
     /**
      * Returns received images.
