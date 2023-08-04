@@ -66,7 +66,7 @@ public:
     }
 
     // override
-    void update(const CameraData& left, const CameraData& right);
+    void update(const CameraData& left, const CameraData& right) override;
 
     /**
      * Returns received images.
