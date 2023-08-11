@@ -360,8 +360,8 @@ int main(int argc, char** argv)
                     saveImage(stereoData);
                 }
             }
-            listener.unregisterListener();
             stereoCamera.stopCamera();
+            listener.unregisterListener();
         }
         else
         {
@@ -417,8 +417,8 @@ int main(int argc, char** argv)
                     cv::imshow(LEFT_WINDOW_NAME,  stereoData.mLCam.mDispImg);
                     cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
                 }
-                listener.unregisterListener();
                 stereoCamera.stopCamera();
+                listener.unregisterListener();
             }
             else
             {

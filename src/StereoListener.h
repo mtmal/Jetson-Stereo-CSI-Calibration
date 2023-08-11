@@ -28,7 +28,7 @@
 /**
  * A simple listener class that saves images and allows them to be copied over by another thread.
  */
-class StereoListener : public IGenericListener<CameraData, CameraData>
+class StereoListener : public IGenericListener<CameraData>
 {
 public:
     /**
@@ -66,7 +66,7 @@ public:
     }
 
     // override
-    void update(const CameraData& left, const CameraData& right) override;
+    void update(const CameraData& camData) override;
 
     /**
      * Returns received images.

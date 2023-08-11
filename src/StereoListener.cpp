@@ -23,7 +23,7 @@
 #include "StereoListener.h"
 
 StereoListener::StereoListener(CSI_StereoCamera& stereoCam)
-: IGenericListener<CameraData, CameraData>(),
+: IGenericListener<CameraData>(),
   mStereoCam(stereoCam), 
   mId(0), 
   mLeft(), 
@@ -43,11 +43,11 @@ void StereoListener::initialise(const cv::Size& imageSize, const bool colour)
     mRight = cv::Mat(imageSize, colour ? CV_8UC3 : CV_8UC1);
 }
 
-void StereoListener::update(const CameraData& left, const CameraData& right)
+void StereoListener::update(const CameraData& camData)
 {
     ScopedLock lock(mLock);
-    mLeft  = left.mImage.createMatHeader();
-    mRight = right.mImage.createMatHeader();
+    mLeft  = camData.mImage[0].createMatHeader();
+    mRight = camData.mImage[1].createMatHeader();
 }
 
 void StereoListener::getImages(cv::Mat& left, cv::Mat& right) const
