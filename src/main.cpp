@@ -339,10 +339,10 @@ int main(int argc, char** argv)
 
         cv::namedWindow(LEFT_WINDOW_NAME,  cv::WINDOW_AUTOSIZE);
         cv::namedWindow(RIGHT_WINDOW_NAME, cv::WINDOW_AUTOSIZE);
-        if (stereoCamera.startCamera(framerate, mode, 0, 1, 2, true, false))
+        if (stereoCamera.startCamera(imageSize, framerate, mode, {0, 1}, 2, true, false))
         {
             listener.initialise(imageSize, true);
-            listener.registerListener();
+            static_cast<ICameraTalker&>(stereoCamera).registerTo(&listener);
         	/* The main loop which controls acquiring images from CSI stereo camera. */
             while (ESCAPE_KEY != key)
             {
@@ -361,7 +361,7 @@ int main(int argc, char** argv)
                 }
             }
             stereoCamera.stopCamera();
-            listener.unregisterListener();
+            static_cast<ICameraTalker&>(stereoCamera).unregisterFrom(&listener);
         }
         else
         {
@@ -402,10 +402,10 @@ int main(int argc, char** argv)
         /* Load the calibration information to CSI cameras. */
         if (stereoCamera.loadCalibration(FOLDER_MAIN))
         {
-        	if (stereoCamera.startCamera(framerate, mode, 0, 1, 2, true, true))
+        	if (stereoCamera.startCamera(imageSize, framerate, mode, {0, 1}, 2, true, true))
             {
                 listener.initialise(imageSize, false);
-                listener.registerListener();
+                static_cast<ICameraTalker&>(stereoCamera).registerTo(&listener);
                 key = 0;
                 /* Now we perform visual inspection of calibration. Rectified greyscale images are displayed. */
                 while (ESCAPE_KEY != key)
@@ -418,7 +418,7 @@ int main(int argc, char** argv)
                     cv::imshow(RIGHT_WINDOW_NAME, stereoData.mRCam.mDispImg);
                 }
                 stereoCamera.stopCamera();
-                listener.unregisterListener();
+                static_cast<ICameraTalker&>(stereoCamera).unregisterFrom(&listener);
             }
             else
             {

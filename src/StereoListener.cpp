@@ -23,9 +23,8 @@
 #include "StereoListener.h"
 
 StereoListener::StereoListener(CSI_StereoCamera& stereoCam)
-: IGenericListener<CameraData>(),
+: GenericListener<CameraData>(),
   mStereoCam(stereoCam), 
-  mId(0), 
   mLeft(), 
   mRight()
 {

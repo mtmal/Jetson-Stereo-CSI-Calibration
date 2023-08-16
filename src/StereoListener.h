@@ -28,7 +28,7 @@
 /**
  * A simple listener class that saves images and allows them to be copied over by another thread.
  */
-class StereoListener : public IGenericListener<CameraData>
+class StereoListener : public GenericListener<CameraData>
 {
 public:
     /**
@@ -49,22 +49,6 @@ public:
      */
     void initialise(const cv::Size& imageSize, const bool colour);
 
-    /**
-     * Registers itself as a listener to the stereo camera class.
-     */
-    inline void registerListener()
-    {
-        mId = mStereoCam.registerListener(*this);
-    }
-
-    /**
-     * Unregisters itself from the stereo camera class.
-     */
-    inline void unregisterListener()
-    {
-        mStereoCam.unregisterListener(mId);
-    }
-
     // override
     void update(const CameraData& camData) override;
 
@@ -78,8 +62,6 @@ public:
 private:
     /** Reference to the stereo camera class. */
     CSI_StereoCamera& mStereoCam;
-    /** ID received from the stereo camera class upon registration. */
-    int mId;
     /** The left camera image. */
     mutable cv::Mat mLeft;
     /** The right camera image. */
